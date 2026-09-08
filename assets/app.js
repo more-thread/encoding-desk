@@ -147,7 +147,7 @@
       /\b\d{6,8}\b/g,
       /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
       /\b\d{1,2}:\d{2}\s?(?:[ap]\.?m\.?)?/gi,
-      /\b[A-Z]{2,}(?:,\s*[A-Z][A-Z\-]+){1,3}\b/g
+      /\b[A-Z][A-Z\-]+(?:\s+[A-Z][A-Z\-]+)*(?:,\s*[A-Z][A-Z\-]*\.?){1,3}/g
     ];
     patterns.forEach(function (re) {
       var m;
@@ -430,7 +430,7 @@
   }
 
   var SAMPLES = [
-    'Hi sir pede pacancel yong SIL nito. Retgular employee na kasi sya.\n1027161 ENRIQUEZ, JO-ANA, CRUZ 05/26/2026 SIL 8 HR/S FULL DAY SCHEDULED REPEAT LABORATORY TEST',
+    'Hi sir pede pacancel yong SIL nito. Retgular employee na kasi sya.\n1000000 DELA CRUZ, JUAN, M 05/26/2026 SIL 8 HR/S FULL DAY SCHEDULED REPEAT LABORATORY TEST',
     'Hi sir, regarding sa Canteen, bakit po kaya merong nagpapakita na for approval, nasync ko naman po noong 10:10 kanina. Sample lang po sa under RSG po Sir:',
     'Sir good morning, pwede po ba tayong mag meeting this Friday for the alignment sa new KPI rating period sa OTP? Kasama po sana ang Agronomy team.'
   ];

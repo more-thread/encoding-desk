@@ -1,106 +1,77 @@
 # ITPMS Log Encoder
 
-A single-page tool that turns an informal client message — a Viber thread, a
-screenshot pasted as text, a one-line request in Taglish — into the six-field
-ITPMS log entry used for weekly monitoring:
+Paste a screenshot of a chat, or the conversation as text, and get the six-field
+ITPMS log entry for weekly monitoring:
 
 ```
 [TYPE]; [MODULE ID]; [Description]; [DEPARTMENT ID]; [Challenge]; [Resolution]; NONE
 ```
 
-No build step and no server — it is a static page. It ships two readers: an
-**AI reader** that calls a free model with your own API key, and an **offline
-reader** that never makes a network request. Only the AI reader sends anything
-anywhere, and only when you choose it.
+One page, one job. No build step and no server — a static site on GitHub Pages.
+
+**Live: https://more-thread.github.io/itpms-log-encoder/**
 
 ## Using it
 
-**Read with AI.** Paste the message and choose **Read with AI**. The model gets
-the encoding standard verbatim — the same text this page displays — plus the
-allowed code lists, and returns the six fields already written as formal
-English. Fields it filled are badged *AI draft*. Needs a free API key, set up
-once; see below.
+Paste a screenshot with `Cmd/Ctrl + V`, drop an image on the box, or type the
+conversation. Then choose **Encode**. The result appears as a single line you
+can copy, with **Show fields** for a field-by-field breakdown.
 
-**Read without AI.** A keyword reader that runs entirely offline. It picks the
-TYPE, MODULE ID and DEPARTMENT ID by weighted cue matching and shows which words
-drove each choice, but it drafts rather than translates — Taglish comes through
-close to as written. This is also the automatic fallback whenever an AI call
-fails, so the page never leaves you stuck.
+Up to four screenshots per entry, so a thread split across several captures still
+encodes as one record. Images are downscaled to a 2000px long edge and sent as
+JPEG — small enough to be quick, large enough to stay readable.
 
-**Copy the standard.** For long threads or screenshots you would rather paste
-somewhere else, **Copy the standard** in the last section gives you the prompt
-to use in any assistant.
+## Two readers
 
-Either reader fills the same six cells, which you correct before copying.
-Numbers, dates and names spotted in the message become chips you can click to
-append to the description. Saved entries collect under *This week's entries* in
-`localStorage`, and export as one block of lines or as CSV.
+**AI reader.** Handles screenshots and text. The model receives your encoding
+standard verbatim, straight from the page, plus the allowed code lists, and
+returns the six fields written as formal English. Needs a free API key.
+
+**On-device reader.** Text only, no network. Picks the TYPE, MODULE ID and
+DEPARTMENT ID by weighted keyword matching. It drafts rather than translates, so
+Taglish comes through close to as written — cleaned of greetings and politeness
+particles, with common `pa-` request forms mapped to their verb (`pacancel` →
+`cancel`). It runs automatically when no key is set, and as the fallback whenever
+an AI call fails, so the page never dead-ends. Screenshots have no offline path
+and will say so.
 
 ## Setting up the AI reader
 
-Open **AI reader → Set up** under the paste box.
+Open **AI reader → Set up** at the bottom of the page.
 
 | Provider | Free tier | Get a key | Default model |
 | --- | --- | --- | --- |
 | Google AI Studio | Yes, no card required | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-2.5-flash` |
 | OpenRouter | Models ending `:free` | [openrouter.ai/keys](https://openrouter.ai/keys) | `google/gemini-2.0-flash-exp:free` |
 
-Paste the key, choose **Save key**, then **Test connection** to confirm the model
-answers in the right shape. The model field is editable — model names change, and
-if one is retired or rate-limited you can point at another without touching code.
+Paste the key, choose **Save key**, then **Test connection**. The model field is
+editable — model names change, and if one is retired or rate-limited you can
+point at another without touching code. For screenshots the model must support
+image input; both defaults do.
 
 **Where the key lives.** In this browser's `localStorage`, on your machine only.
-It is never committed to the repository and never sent anywhere except the
-provider you chose. Anyone who can use this browser profile can read it, so do
-not set it up on a shared machine. **Forget key** removes it.
+Never committed, never sent anywhere except the provider you chose. Anyone who
+can use this browser profile can read it, so do not set it up on a shared
+machine. **Forget key** removes it.
 
-**What gets sent.** Reading with AI sends the pasted message to the provider.
-For messages carrying employee numbers, names or case details, that is a real
-data-handling decision — check it against your own policy, and use *Read without
-AI* when the message should not leave the device. Free tiers in particular may
-use submitted content to improve models; read the provider's terms.
+**What gets sent.** Encoding sends the pasted text and any screenshots to the
+provider. For conversations carrying employee numbers, names or case details that
+is a real data-handling decision — check it against your own policy. Free tiers
+in particular may use submitted content to improve models.
 
-**Guardrails.** The model is constrained to a JSON schema whose module and
-department fields are enums of your actual codes. Anything outside those lists is
-rejected and the field is left empty with a note, so a plausible-sounding code
-like `CANTEEN` never reaches the record in place of `CTN`. Codes the message does
-not support come back as `UNKNOWN` and stay empty rather than being guessed. On
-any error — bad key, quota, timeout, blocked content — the page states the reason
-and falls back to the offline reader.
+## Guarantees
 
-## What the tool guarantees
-
-- All six fields present, or it names the ones still missing.
-- Semicolons typed inside a field become commas, so a stray `;` cannot silently
-  add a seventh field.
+- Semicolons typed inside a field become commas, so a stray `;` cannot add a
+  seventh field.
 - Newlines and repeated whitespace collapse to single spaces.
-- The trailing `; NONE` is appended automatically and cannot be edited.
-
-## Limits of the offline reader
-
-The offline reader drafts; it does not translate. It picks the codes reliably,
-but a Taglish sentence comes through close to as written — cleaned of greetings
-and politeness particles, with common `pa-` request forms mapped to their verb
-(`pacancel` → `cancel`). Rewriting into formal English is what the AI reader is
-for. Either way every auto-filled field carries a badge, because both readers
-draft and neither decides.
-
-## Deploying to GitHub Pages
-
-The repo is already a working site at its root; `index.html` is the entry point.
-
-**With the included workflow (recommended).** Push to `main`, then in
-**Settings → Pages** set *Source* to **GitHub Actions**. `.github/workflows/pages.yml`
-publishes the repo root on every push.
-
-**Without Actions.** In **Settings → Pages**, set *Source* to **Deploy from a
-branch**, branch `main`, folder `/ (root)`.
-
-To create the repo and push:
-
-```sh
-gh repo create itpms-log-encoder --public --source=. --remote=origin --push
-```
+- The trailing `; NONE` is always appended.
+- Module and department are constrained to a JSON schema whose enums are your
+  actual codes. Anything outside the lists is rejected and the field is left
+  empty with a note, so a plausible-sounding `CANTEEN` never lands in place of
+  `CTN`. Codes the message does not support come back as `UNKNOWN` and stay
+  empty rather than being guessed.
+- Any failure — bad key, quota, timeout, blocked content — states the reason and
+  falls back to the on-device reader when there is text to work with.
 
 ## Editing the code lists
 
@@ -109,27 +80,32 @@ gh repo create itpms-log-encoder --public --source=. --remote=origin --push
 | Constant | What it holds |
 | --- | --- |
 | `MODULES` | The eight module IDs, their scope text, and match cues |
-| `DEPARTMENT_GROUPS` | The 33 department IDs, grouped for browsing only |
+| `DEPARTMENT_GROUPS` | The 33 department IDs |
 | `TYPES` | SUPPORT / INITIATIVE / MEETING and their cues |
-| `QUICK_CHALLENGES`, `QUICK_RESOLUTIONS` | One-click chip text |
 | `AI_PROVIDERS` | Providers, default models and key links |
 
-Each cue is `['phrase', weight]`. Weights are 8 for the code itself, 4–6 for a
-phrase only that entry uses, and 1–2 for a supporting word that could belong to
-more than one entry. The highest total wins; nothing matching leaves the field
-empty rather than guessing.
+Each cue is `['phrase', weight]`, used only by the on-device reader. Weights are
+8 for the code itself, 4–6 for a phrase only that entry uses, and 1–2 for a
+supporting word. The AI reader instead gets the code lists as schema enums.
 
-Two things worth knowing about the standard itself: its second worked example
-encodes the department as `RSG`, which is not in its own department list, so the
-page leaves the department empty and prompts rather than forcing a wrong code.
-The department *groupings* here are navigational — the standard lists all 33
-codes flat.
+The encoding standard itself lives in `index.html` as `#promptSource` and is the
+system prompt verbatim — edit it there and both readers follow.
+
+One note on the standard: its second worked example encodes the department as
+`RSG`, which is not in its own department list, so that code is rejected and the
+field is left empty rather than forced.
+
+## Deploying
+
+`index.html` at the repo root is the whole site. Push to `main` and
+`.github/workflows/pages.yml` publishes it; Pages is set to **GitHub Actions** as
+the source.
 
 ## Files
 
 ```
-index.html          markup and the encoding standard, verbatim
+index.html          markup, and the encoding standard as the system prompt
 assets/styles.css   continuous-form ledger styling
-assets/data.js      modules, departments, types, chip text
-assets/app.js       readers (AI and offline), validator, week log
+assets/data.js      modules, departments, types, AI providers
+assets/app.js       screenshot handling, both readers, result rendering
 ```

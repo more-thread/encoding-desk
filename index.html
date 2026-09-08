@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <title>ITPMS Log Encoder — paste the chat, get the record</title>
-<meta name="description" content="Turns an informal client message into the six-field ITPMS log entry for support, initiative, and meeting logs, separated by semicolons and ready for weekly monitoring.">
+<meta name="description" content="Paste a screenshot or a chat conversation and get the six-field ITPMS log entry, ready for weekly monitoring.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=DM+Mono:wght@300;400;500&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
-<a class="skip" href="#encoder">Skip to the encoder</a>
+<a class="skip" href="#paste">Skip to the paste box</a>
 
 <div class="sheet">
 <div class="inner">
@@ -22,249 +22,98 @@
     <div class="stamp">Support &middot; Initiative &middot; Meeting logs</div>
   </header>
 
-  <section class="hero">
-    <p class="eyebrow">Weekly monitoring &middot; Encoding desk</p>
-    <h1>Paste the chat. Get the <em>record;</em></h1>
-    <p>Client messages arrive as screenshots and group chat threads. Weekly monitoring needs six fields in a fixed order, separated by semicolons. This page does the conversion and checks the result before you copy it.</p>
-  </section>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Weekly monitoring &middot; Encoding desk</p>
+      <h1>Paste the chat. Get the <em>record;</em></h1>
+    </section>
 
-  <!-- ============ ENCODER ============ -->
-  <main id="encoder" class="section">
-    <div class="section-head">
-      <h2>Encode a message</h2>
-      <span class="tag">Step 1 &mdash; intake</span>
-    </div>
-    <p class="section-note">Paste the client comment or the text from a screenshot. Reading it fills the fields below with drafts you can correct.</p>
+    <section class="drop" id="drop">
+      <label class="visually-hidden" for="raw">Client message</label>
+      <textarea id="raw" placeholder="Paste the conversation here — or paste a screenshot with Cmd/Ctrl + V, or drop an image anywhere on this box."></textarea>
 
-    <div class="intake">
-      <div class="paste-wrap">
-        <label class="visually-hidden" for="raw">Client message</label>
-        <textarea id="raw" placeholder="Hi sir pede pacancel yong SIL nito. Regular employee na kasi sya. 1000000 DELA CRUZ, JUAN, M 05/26/2026 SIL 8 HR/S FULL DAY"></textarea>
-        <div class="actions" style="margin-top:12px">
-          <button class="btn btn--primary" id="aiReadBtn" type="button">Read with AI</button>
-          <button class="btn" id="readBtn" type="button">Read without AI</button>
-          <button class="btn btn--quiet" id="sampleBtn" type="button">Load an example</button>
-          <button class="btn btn--quiet" id="clearBtn" type="button">Clear all fields</button>
-          <span class="kbd">Cmd / Ctrl + Enter</span>
-        </div>
+      <div class="shots" id="shots" hidden></div>
 
-        <div class="ai-panel" id="aiPanel">
-          <div class="ai-head">
-            <h3>AI reader</h3>
-            <p class="ai-state" id="aiState">Checking&hellip;</p>
-            <button class="btn btn--small btn--quiet" id="aiToggle" type="button"
-                    aria-expanded="false" aria-controls="aiSettings">Set up</button>
-          </div>
-
-          <div class="ai-settings" id="aiSettings" hidden>
-            <div class="ai-grid">
-              <div>
-                <label class="ai-label" for="aiProvider">Provider</label>
-                <div class="select-wrap">
-                  <select id="aiProvider"></select>
-                </div>
-              </div>
-              <div>
-                <label class="ai-label" for="aiModel">Model</label>
-                <input type="text" id="aiModel" spellcheck="false" autocomplete="off">
-              </div>
-            </div>
-
-            <label class="ai-label" for="aiKey">API key</label>
-            <input type="password" id="aiKey" spellcheck="false" autocomplete="off"
-                   placeholder="Paste your key">
-            <p class="ai-hint" id="aiKeyHint"></p>
-
-            <div class="actions" style="margin-top:12px">
-              <button class="btn btn--small btn--primary" id="aiSaveBtn" type="button">Save key</button>
-              <button class="btn btn--small btn--quiet" id="aiTestBtn" type="button">Test connection</button>
-              <button class="btn btn--small btn--quiet" id="aiForgetBtn" type="button">Forget key</button>
-            </div>
-            <p class="ai-hint" id="aiSaveStatus" role="status" aria-live="polite"></p>
-
-            <p class="ai-warn">
-              The key is stored in this browser only and is never committed to the repository.
-              Anyone who can use this browser profile can read it. Reading with AI sends the
-              pasted message to the provider, so treat employee names and numbers accordingly.
-              Reading without AI keeps everything on this device.
-            </p>
-          </div>
-        </div>
+      <div class="drop-bar">
+        <button class="btn btn--primary" id="encodeBtn" type="button">Encode</button>
+        <button class="btn btn--quiet" id="shotBtn" type="button">Add a screenshot</button>
+        <button class="btn btn--quiet" id="clearBtn" type="button">Clear</button>
+        <input type="file" id="shotInput" accept="image/*" multiple hidden>
+        <span class="kbd">Cmd / Ctrl + Enter</span>
       </div>
+    </section>
 
-      <aside class="intake-side">
-        <div class="cues">
-          <h3>What the reader found</h3>
-          <div id="cues"><p>Nothing read yet. Paste a message and choose <b>Read message</b>.</p></div>
-        </div>
-        <div class="cues" id="detailsBox" hidden>
-          <h3>Details spotted</h3>
-          <div class="chips" id="details"></div>
-          <p style="margin-top:9px">Choose one to add it to the description.</p>
-        </div>
-      </aside>
-    </div>
-
-    <div class="section-head" style="margin-top:44px">
-      <h2>The record</h2>
-      <span class="tag">Step 2 &mdash; six fields, in order</span>
-    </div>
-    <p class="section-note">Each cell is one field of the entry. The order below is the order in the output.</p>
-
-    <div class="rail">
-      <div class="cell cell--type is-empty" data-field="type">
-        <div class="cell-label"><span class="pos">01</span> Type <span class="draft">drafted</span></div>
-        <div class="type-set" id="typeSet"></div>
-        <p class="cell-hint" id="typeHint">Pick the log this entry belongs to.</p>
-      </div>
-
-      <div class="cell cell--module is-empty" data-field="module">
-        <div class="cell-label"><span class="pos">02</span> Module ID <span class="draft">drafted</span></div>
-        <div class="select-wrap">
-          <label class="visually-hidden" for="moduleSelect">Module ID</label>
-          <select id="moduleSelect"></select>
-        </div>
-        <p class="cell-hint" id="moduleHint">The system the request is about.</p>
-      </div>
-
-      <div class="cell cell--desc is-empty" data-field="description">
-        <div class="cell-label"><span class="pos">03</span> Description <span class="draft">drafted</span></div>
-        <label class="visually-hidden" for="descInput">Description</label>
-        <textarea id="descInput" placeholder="What is being asked for, in one formal sentence."></textarea>
-        <p class="cell-hint" id="descHint">Keep the names, numbers, and dates from the message.</p>
-      </div>
-
-      <div class="cell cell--dept is-empty" data-field="dept">
-        <div class="cell-label"><span class="pos">04</span> Department ID <span class="draft">drafted</span></div>
-        <div class="select-wrap">
-          <label class="visually-hidden" for="deptSelect">Department ID</label>
-          <select id="deptSelect"></select>
-        </div>
-        <p class="cell-hint" id="deptHint">The department that raised the request.</p>
-      </div>
-
-      <div class="cell cell--chal is-empty" data-field="challenge">
-        <div class="cell-label"><span class="pos">05</span> Challenge <span class="draft">drafted</span></div>
-        <label class="visually-hidden" for="challengeInput">Challenge</label>
-        <textarea id="challengeInput" placeholder="What makes this hard to close, or what still needs confirming."></textarea>
-        <div class="chips" id="quickChal"></div>
-        <p class="cell-hint" id="challengeHint">State the blocker, not the request again.</p>
-      </div>
-
-      <div class="cell cell--res is-empty" data-field="resolution">
-        <div class="cell-label"><span class="pos">06</span> Resolution <span class="draft">drafted</span></div>
-        <label class="visually-hidden" for="resolutionInput">Resolution</label>
-        <textarea id="resolutionInput" placeholder="What was done, or where the request goes next."></textarea>
-        <div class="chips" id="quickRes"></div>
-        <p class="cell-hint" id="resHint">What was done, or where the request goes next.</p>
-      </div>
-
-      <div class="cell cell--none cell--last" data-field="trailing">
-        <div class="cell-label"><span class="pos">07</span> Trailing value</div>
-        <div class="none-strip">NONE <span>Fixed by the standard &mdash; every entry ends with it</span></div>
-      </div>
-    </div>
-
-    <div class="output">
-      <div class="output-bar">
+    <section class="result" id="result" hidden aria-live="polite">
+      <div class="result-bar">
         <span class="tag">Encoded entry</span>
-        <span class="tag" id="fieldCount">0 of 6 fields filled</span>
+        <span class="tag" id="resultMeta"></span>
       </div>
-      <p class="output-line" id="outputLine"></p>
-      <div class="output-actions">
+      <p class="result-line" id="resultLine"></p>
+      <div class="result-actions">
         <button class="btn btn--primary" id="copyBtn" type="button">Copy line</button>
-        <button class="btn" id="saveBtn" type="button">Save to this week</button>
+        <button class="btn btn--quiet btn--small" id="breakdownBtn" type="button"
+                aria-expanded="false" aria-controls="breakdown">Show fields</button>
         <span class="status" id="status" role="status" aria-live="polite"></span>
       </div>
-    </div>
+      <table class="ledger" id="breakdown" hidden>
+        <tbody id="breakdownBody"></tbody>
+      </table>
+      <p class="result-notes" id="resultNotes" hidden></p>
+    </section>
+
+    <p class="status status--standalone" id="topStatus" role="status" aria-live="polite"></p>
   </main>
 
-  <!-- ============ WEEK LOG ============ -->
-  <section class="section" id="week">
-    <div class="section-head">
-      <h2>This week's entries</h2>
-      <span class="tag">Stored in this browser</span>
-    </div>
-    <p class="section-note">Saved lines stay on this device until you clear them. Copy the whole set into the monitoring sheet at the end of the week.</p>
-
-    <div class="log-toolbar">
-      <span class="count" id="logCount">0 entries</span>
-      <button class="btn btn--small" id="copyAllBtn" type="button">Copy all lines</button>
-      <button class="btn btn--small" id="downloadBtn" type="button">Download CSV</button>
-      <button class="btn btn--small btn--quiet" id="clearLogBtn" type="button">Clear the week</button>
+  <section class="ai-panel" id="aiPanel">
+    <div class="ai-head">
+      <h3>AI reader</h3>
+      <p class="ai-state" id="aiState">Checking&hellip;</p>
+      <button class="btn btn--small btn--quiet" id="aiToggle" type="button"
+              aria-expanded="false" aria-controls="aiSettings">Set up</button>
     </div>
 
-    <div class="log-empty" id="logEmpty">No entries saved yet. Encode a message above, then save it to start the week's list.</div>
-
-    <table class="ledger" id="logTable" hidden>
-      <thead>
-        <tr><th scope="col">Saved</th><th scope="col">Entry</th><th scope="col">Action</th></tr>
-      </thead>
-      <tbody id="logBody"></tbody>
-    </table>
-  </section>
-
-  <!-- ============ REFERENCE ============ -->
-  <section class="section" id="reference">
-    <div class="section-head">
-      <h2>Reference codes</h2>
-      <span class="tag">Choose a code to fill the field</span>
-    </div>
-    <p class="section-note">The full list from the encoding standard. Department groupings are for browsing only; the standard lists the codes flat.</p>
-
-    <div class="ref-grid">
-      <div>
-        <div class="filter-row">
-          <label class="visually-hidden" for="moduleFilter">Filter modules</label>
-          <input type="text" id="moduleFilter" placeholder="Filter modules">
+    <div class="ai-settings" id="aiSettings" hidden>
+      <div class="ai-grid">
+        <div>
+          <label class="ai-label" for="aiProvider">Provider</label>
+          <div class="select-wrap"><select id="aiProvider"></select></div>
         </div>
-        <div class="table-scroll">
-          <table class="ledger">
-            <caption>Module IDs &mdash; field 02</caption>
-            <thead><tr><th scope="col">Code</th><th scope="col">Covers</th></tr></thead>
-            <tbody id="moduleTable"></tbody>
-          </table>
+        <div>
+          <label class="ai-label" for="aiModel">Model</label>
+          <input type="text" id="aiModel" spellcheck="false" autocomplete="off">
         </div>
       </div>
 
-      <div>
-        <div class="filter-row">
-          <label class="visually-hidden" for="deptFilter">Filter departments</label>
-          <input type="text" id="deptFilter" placeholder="Filter departments">
-        </div>
-        <div class="table-scroll">
-          <table class="ledger">
-            <caption>Department IDs &mdash; field 04</caption>
-            <thead><tr><th scope="col">Code</th><th scope="col">Department</th><th scope="col">Group</th></tr></thead>
-            <tbody id="deptTable"></tbody>
-          </table>
-        </div>
+      <label class="ai-label" for="aiKey">API key</label>
+      <input type="password" id="aiKey" spellcheck="false" autocomplete="off" placeholder="Paste your key">
+      <p class="ai-hint" id="aiKeyHint"></p>
+
+      <div class="drop-bar" style="margin-top:12px">
+        <button class="btn btn--small btn--primary" id="aiSaveBtn" type="button">Save key</button>
+        <button class="btn btn--small btn--quiet" id="aiTestBtn" type="button">Test connection</button>
+        <button class="btn btn--small btn--quiet" id="aiForgetBtn" type="button">Forget key</button>
       </div>
+      <p class="ai-hint" id="aiSaveStatus" role="status" aria-live="polite"></p>
+
+      <p class="ai-warn">
+        The key is stored in this browser only and is never committed to the repository.
+        Anyone who can use this browser profile can read it. Encoding sends what you paste
+        to the provider, so treat employee names and numbers accordingly. Screenshots can
+        only be read by the AI reader; plain text falls back to an on-device reader if the
+        provider is unavailable.
+      </p>
     </div>
   </section>
 
-  <!-- ============ STANDARD ============ -->
-  <section class="section" id="standard">
-    <div class="section-head">
-      <h2>The encoding standard</h2>
-      <span class="tag">Source of truth</span>
-    </div>
+  <footer class="colophon">
+    <span>ITPMS weekly monitoring &middot; encoding desk</span>
+    <span>Six fields, semicolon separated, trailing NONE</span>
+  </footer>
 
-    <div class="two-up">
-      <div class="route">
-        <h3>Encode it here</h3>
-        <p>The form above applies the standard directly: it drafts the fields, replaces stray semicolons, checks that all six are filled, and appends the trailing <code>NONE</code>.</p>
-      </div>
-      <div class="route">
-        <h3>Hand it to an assistant</h3>
-        <p>For long threads and screenshots, copy the standard below into Claude or another assistant, then paste the client message after it.</p>
-        <button class="btn btn--small" id="copyPromptBtn" type="button">Copy the standard</button>
-        <span class="status" id="promptStatus" role="status" aria-live="polite"></span>
-      </div>
-    </div>
+</div>
+</div>
 
-    <div class="standard">
-<pre id="promptSource"># Purpose
+<script type="text/plain" id="promptSource"># Purpose
 Automate the conversion of client comments, requests, or screenshots into the standardized encoding format for support, initiative, and meeting logs, aligned with ITPMS weekly monitoring requirements.
 
 # General Guidelines
@@ -354,18 +203,7 @@ Automate the conversion of client comments, requests, or screenshots into the st
 
 # Closing
 - Ensure every log entry is ready for ITPMS weekly monitoring and follows encoding standards.
-- Continue to assist until each entry is fully compliant.</pre>
-    </div>
-  </section>
-
-  <footer class="colophon">
-    <span>ITPMS weekly monitoring &middot; encoding desk</span>
-    <span>Runs entirely in your browser</span>
-  </footer>
-
-</div>
-</div>
-
+- Continue to assist until each entry is fully compliant.</script>
 <script src="assets/data.js"></script>
 <script src="assets/app.js"></script>
 </body>

@@ -191,23 +191,6 @@ const TYPES = [
   }
 ];
 
-const QUICK_CHALLENGES = [
-  { label: 'Needs confirmation', value: 'Needs confirmation and documentation from the requester' },
-  { label: 'Awaiting details', value: 'Awaiting complete details from the requesting department' },
-  { label: 'Needs validation', value: 'Requires validation of the affected records' },
-  { label: 'Cause not isolated', value: 'Root cause not yet isolated, for log review' },
-  { label: 'Awaiting approval', value: 'Dependent on approval from the department head' },
-  { label: 'No blocker', value: 'No blocker, straightforward request' }
-];
-
-const QUICK_RESOLUTIONS = [
-  { label: 'For ITPMS Request', value: 'For ITPMS Request' },
-  { label: 'User guided', value: 'Resolved, user guided through the correct steps' },
-  { label: 'Record corrected', value: 'Corrected the record and confirmed with the requester' },
-  { label: 'Escalated to dev', value: 'Escalated to the development team for fixing' },
-  { label: 'For validation', value: 'For further validation with the requesting department' },
-  { label: 'Next release', value: 'Scheduled for the next system release' }
-];
 
 /* Free-tier AI providers. Keys live in the browser only — see the AI panel.
    Model names move fast; both fields are editable in the UI. */

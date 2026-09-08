@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>ITPMS Log Encoder — paste the chat, get the record</title>
+<meta name="description" content="Turns an informal client message into the six-field ITPMS log entry for support, initiative, and meeting logs, separated by semicolons and ready for weekly monitoring.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=DM+Mono:wght@300;400;500&family=Public+Sans:ital,wght@0,400..700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<a class="skip" href="#encoder">Skip to the encoder</a>
+
+<div class="sheet">
+<div class="inner">
+
+  <header class="masthead">
+    <div class="wordmark"><b>ITPMS</b><span class="sep">;</span> Log Encoder</div>
+    <div class="stamp">Support &middot; Initiative &middot; Meeting logs</div>
+  </header>
+
+  <section class="hero">
+    <p class="eyebrow">Weekly monitoring &middot; Encoding desk</p>
+    <h1>Paste the chat. Get the <em>record;</em></h1>
+    <p>Client messages arrive as screenshots and group chat threads. Weekly monitoring needs six fields in a fixed order, separated by semicolons. This page does the conversion and checks the result before you copy it.</p>
+  </section>
+
+  <!-- ============ ENCODER ============ -->
+  <main id="encoder" class="section">
+    <div class="section-head">
+      <h2>Encode a message</h2>
+      <span class="tag">Step 1 &mdash; intake</span>
+    </div>
+    <p class="section-note">Paste the client comment or the text from a screenshot. Reading it fills the fields below with drafts you can correct.</p>
+
+    <div class="intake">
+      <div class="paste-wrap">
+        <label class="visually-hidden" for="raw">Client message</label>
+        <textarea id="raw" placeholder="Hi sir pede pacancel yong SIL nito. Regular employee na kasi sya. 1027161 ENRIQUEZ, JO-ANA, CRUZ 05/26/2026 SIL 8 HR/S FULL DAY"></textarea>
+        <div class="actions" style="margin-top:12px">
+          <button class="btn btn--primary" id="readBtn" type="button">Read message</button>
+          <button class="btn btn--quiet" id="sampleBtn" type="button">Load an example</button>
+          <button class="btn btn--quiet" id="clearBtn" type="button">Clear all fields</button>
+          <span class="kbd">Cmd / Ctrl + Enter</span>
+        </div>
+      </div>
+
+      <aside class="intake-side">
+        <div class="cues">
+          <h3>What the reader found</h3>
+          <div id="cues"><p>Nothing read yet. Paste a message and choose <b>Read message</b>.</p></div>
+        </div>
+        <div class="cues" id="detailsBox" hidden>
+          <h3>Details spotted</h3>
+          <div class="chips" id="details"></div>
+          <p style="margin-top:9px">Choose one to add it to the description.</p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="section-head" style="margin-top:44px">
+      <h2>The record</h2>
+      <span class="tag">Step 2 &mdash; six fields, in order</span>
+    </div>
+    <p class="section-note">Each cell is one field of the entry. The order below is the order in the output.</p>
+
+    <div class="rail">
+      <div class="cell cell--type is-empty" data-field="type">
+        <div class="cell-label"><span class="pos">01</span> Type <span class="draft">drafted</span></div>
+        <div class="type-set" id="typeSet"></div>
+        <p class="cell-hint" id="typeHint">Pick the log this entry belongs to.</p>
+      </div>
+
+      <div class="cell cell--module is-empty" data-field="module">
+        <div class="cell-label"><span class="pos">02</span> Module ID <span class="draft">drafted</span></div>
+        <div class="select-wrap">
+          <label class="visually-hidden" for="moduleSelect">Module ID</label>
+          <select id="moduleSelect"></select>
+        </div>
+        <p class="cell-hint" id="moduleHint">The system the request is about.</p>
+      </div>
+
+      <div class="cell cell--desc is-empty" data-field="description">
+        <div class="cell-label"><span class="pos">03</span> Description <span class="draft">drafted</span></div>
+        <label class="visually-hidden" for="descInput">Description</label>
+        <textarea id="descInput" placeholder="What is being asked for, in one formal sentence."></textarea>
+        <p class="cell-hint" id="descHint">Keep the names, numbers, and dates from the message.</p>
+      </div>
+
+      <div class="cell cell--dept is-empty" data-field="dept">
+        <div class="cell-label"><span class="pos">04</span> Department ID <span class="draft">drafted</span></div>
+        <div class="select-wrap">
+          <label class="visually-hidden" for="deptSelect">Department ID</label>
+          <select id="deptSelect"></select>
+        </div>
+        <p class="cell-hint" id="deptHint">The department that raised the request.</p>
+      </div>
+
+      <div class="cell cell--chal is-empty" data-field="challenge">
+        <div class="cell-label"><span class="pos">05</span> Challenge <span class="draft">drafted</span></div>
+        <label class="visually-hidden" for="challengeInput">Challenge</label>
+        <textarea id="challengeInput" placeholder="What makes this hard to close, or what still needs confirming."></textarea>
+        <div class="chips" id="quickChal"></div>
+        <p class="cell-hint" id="challengeHint">State the blocker, not the request again.</p>
+      </div>
+
+      <div class="cell cell--res is-empty" data-field="resolution">
+        <div class="cell-label"><span class="pos">06</span> Resolution <span class="draft">drafted</span></div>
+        <label class="visually-hidden" for="resolutionInput">Resolution</label>
+        <textarea id="resolutionInput" placeholder="What was done, or where the request goes next."></textarea>
+        <div class="chips" id="quickRes"></div>
+        <p class="cell-hint" id="resHint">What was done, or where the request goes next.</p>
+      </div>
+
+      <div class="cell cell--none cell--last" data-field="trailing">
+        <div class="cell-label"><span class="pos">07</span> Trailing value</div>
+        <div class="none-strip">NONE <span>Fixed by the standard &mdash; every entry ends with it</span></div>
+      </div>
+    </div>
+
+    <div class="output">
+      <div class="output-bar">
+        <span class="tag">Encoded entry</span>
+        <span class="tag" id="fieldCount">0 of 6 fields filled</span>
+      </div>
+      <p class="output-line" id="outputLine"></p>
+      <div class="output-actions">
+        <button class="btn btn--primary" id="copyBtn" type="button">Copy line</button>
+        <button class="btn" id="saveBtn" type="button">Save to this week</button>
+        <span class="status" id="status" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ WEEK LOG ============ -->
+  <section class="section" id="week">
+    <div class="section-head">
+      <h2>This week's entries</h2>
+      <span class="tag">Stored in this browser</span>
+    </div>
+    <p class="section-note">Saved lines stay on this device until you clear them. Copy the whole set into the monitoring sheet at the end of the week.</p>
+
+    <div class="log-toolbar">
+      <span class="count" id="logCount">0 entries</span>
+      <button class="btn btn--small" id="copyAllBtn" type="button">Copy all lines</button>
+      <button class="btn btn--small" id="downloadBtn" type="button">Download CSV</button>
+      <button class="btn btn--small btn--quiet" id="clearLogBtn" type="button">Clear the week</button>
+    </div>
+
+    <div class="log-empty" id="logEmpty">No entries saved yet. Encode a message above, then save it to start the week's list.</div>
+
+    <table class="ledger" id="logTable" hidden>
+      <thead>
+        <tr><th scope="col">Saved</th><th scope="col">Entry</th><th scope="col">Action</th></tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
+  </section>
+
+  <!-- ============ REFERENCE ============ -->
+  <section class="section" id="reference">
+    <div class="section-head">
+      <h2>Reference codes</h2>
+      <span class="tag">Choose a code to fill the field</span>
+    </div>
+    <p class="section-note">The full list from the encoding standard. Department groupings are for browsing only; the standard lists the codes flat.</p>
+
+    <div class="ref-grid">
+      <div>
+        <div class="filter-row">
+          <label class="visually-hidden" for="moduleFilter">Filter modules</label>
+          <input type="text" id="moduleFilter" placeholder="Filter modules">
+        </div>
+        <div class="table-scroll">
+          <table class="ledger">
+            <caption>Module IDs &mdash; field 02</caption>
+            <thead><tr><th scope="col">Code</th><th scope="col">Covers</th></tr></thead>
+            <tbody id="moduleTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div class="filter-row">
+          <label class="visually-hidden" for="deptFilter">Filter departments</label>
+          <input type="text" id="deptFilter" placeholder="Filter departments">
+        </div>
+        <div class="table-scroll">
+          <table class="ledger">
+            <caption>Department IDs &mdash; field 04</caption>
+            <thead><tr><th scope="col">Code</th><th scope="col">Department</th><th scope="col">Group</th></tr></thead>
+            <tbody id="deptTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STANDARD ============ -->
+  <section class="section" id="standard">
+    <div class="section-head">
+      <h2>The encoding standard</h2>
+      <span class="tag">Source of truth</span>
+    </div>
+
+    <div class="two-up">
+      <div class="route">
+        <h3>Encode it here</h3>
+        <p>The form above applies the standard directly: it drafts the fields, replaces stray semicolons, checks that all six are filled, and appends the trailing <code>NONE</code>.</p>
+      </div>
+      <div class="route">
+        <h3>Hand it to an assistant</h3>
+        <p>For long threads and screenshots, copy the standard below into Claude or another assistant, then paste the client message after it.</p>
+        <button class="btn btn--small" id="copyPromptBtn" type="button">Copy the standard</button>
+        <span class="status" id="promptStatus" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="standard">
+<pre id="promptSource"># Purpose
+Automate the conversion of client comments, requests, or screenshots into the standardized encoding format for support, initiative, and meeting logs, aligned with ITPMS weekly monitoring requirements.
+
+# General Guidelines
+- Accurately interpret and structure informal client input as formal log entries.
+- Format every entry using a semicolon (;) separator.
+- Use clear, professional, and concise language for all outputs.
+- Preserve essential context from client messages; do not omit or invent critical details.
+- Identify and assign field values even if phrasing is informal or nonstandard.
+- For missing details, infer when possible or prompt the user for clarification.
+
+# Skills
+- Detect the relevant type (SUPPORT, INITIATIVE, MEETING) based on context or explicit user cue.
+- Extract and assign the following fields: MODULE ID, Description, DEPARTMENT ID, Challenge, and Resolution.
+- Summarize lengthy comments, group chats, or screenshot text into a single, complete log entry.
+- Validate that the final entry has all six required fields and uses the correct separator.
+- Present the finalized encoded log and request any missing information.
+
+# Supported MODULE IDs
+- CTN: CANTEEN
+- ONEHRMS: Anything related to HR concerns (timekeeping, staff movement, employee profile, employment profile, etc.)
+- DPS: Due Process System
+- ABS: Accommodation Booking System
+- HRGATEWAY: OneHRMS Gateway (leave, staffing requisitions before encoding movements)
+- OTP: ONEHR Talent Portfolio (KPIs)
+- EEMS: Employee Exit Management System
+- TRS: Training Registrar System
+
+# Supported DEPARTMENT IDs
+- CACA: CORPORATE AFFAIRS AND COMPLIANCE
+- CAHR: HUMAN RESOURCE MANAGEMENT
+- CAIT: INFORMATION TECHNOLOGY DEPARTMENT
+- CALS: LEGAL SERVICES, ENTERPRISE RISK MANAGEMENT, AUDIT GROUP, AND DATA PROTECTION AND MANAGEMENT
+- CAPS: PROCUREMENT AND SHIPPING
+- ACTG: ACCOUNTING
+- TAX: TAX COMPLIANCE
+- TREA: TREASURY
+- GEAO: EXTERNAL AFFAIRS AND OPERATIONS
+- GOAG: AGRONOMY
+- GOCB: BROADLEAF - FMA
+- GOPA: PRECISION AGRICULTURE
+- GOR1: GO REGION I
+- GOR2: GO REGION II
+- GOSP: GO SPECIAL PROJECTS
+- GOST: GO STRATA
+- GROW: GROWING
+- GRTF: GO RECRUITMENT TASK FORCE
+- SSDG: SYSTEMS AND STANDARDS DEVELOPMENT GROUP
+- EHSS: ENVIRONMENT, HEALTH, SAFETY AND SECURITY
+- ENGG: ENGINEERING
+- FGR1: FINISHED GOODS I
+- FGR2: FINISHED GOODS II
+- GLLO: GREEN LEAF LOGISTICS
+- IPR1: PRODUCTION I
+- IPR2: PRODUCTION II
+- PROD: PRODUCTION
+- QUCO: QUALITY CONTROL
+- TRMG: TRAFFIC MANAGEMENT GROUP
+- LOPS: LEAF OPERATIONS
+- LOR1: LEAF OPERATIONS I
+- LOR2: LEAF OPERATIONS II
+- SALE: SALES
+
+# Step-by-Step Workflow
+1. **Analyze Input:** Review client comment or screenshot text for details on the request or issue.
+2. **Determine Log Type:** Identify if the entry is SUPPORT, INITIATIVE, or MEETING.
+3. **Extract Fields:** Parse out MODULE ID, Description, DEPARTMENT ID, Challenge, and Resolution (infer or ask for unclear parts).
+4. **Reformat Entry:** Present information as:
+  `[TYPE]; [MODULE ID]; [Description]; [DEPARTMENT ID]; [Challenge]; [Resolution]`
+5. **Validate:** Confirm all six fields are filled and separated by semicolons. For missing info, prompt the user concisely.
+6. **Present:** Output the completed log entry ready for weekly monitoring. **Append a semicolon and the word 'NONE' at the end of the output:**
+  `[TYPE]; [MODULE ID]; [Description]; [DEPARTMENT ID]; [Challenge]; [Resolution]; NONE`
+
+# Feedback and Iteration
+- If user feedback is provided or a field is corrected, update the entry accordingly.
+- Continue assisting until the log entry meets encoding standards.
+
+# Interaction Example
+**Client message:**
+"Hi sir pede pacancel yong SIL nito. Retgular employee na kasi sya. 1027161 ENRIQUEZ, JO-ANA, CRUZ 05/26/2026 SIL 8 HR/S FULL DAY SCHEDULED REPEAT LABORATORY TEST"
+**Encoded log:**
+`SUPPORT; ONEHRMS; Cancel SIL for employee 1027161 (ENRIQUEZ, JO-ANA, CRUZ) on 05/26/2026 due to change to regular status; CAHR; Request for SIL cancellation—needs confirmation and documentation; For ITPMS Request; NONE`
+
+**Client message:**
+"Hi sir, regarding sa Canteen, bakit po kaya merong nagpapakit na for approval, nasync ko naman po noong 10:10 kanina... Sample lang po sa under RSG po Sir:"
+**Encoded log:**
+`SUPPORT; CTN; For approval notifications appearing despite recent sync at 10:10 AM; RSG; Possible late scheduling by FS, unclear scheduling time for FC, intermittent late entries; Request investigation of scheduling logs for FS and FC; NONE`
+
+# Closing
+- Ensure every log entry is ready for ITPMS weekly monitoring and follows encoding standards.
+- Continue to assist until each entry is fully compliant.</pre>
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <span>ITPMS weekly monitoring &middot; encoding desk</span>
+    <span>Runs entirely in your browser</span>
+  </footer>
+
+</div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

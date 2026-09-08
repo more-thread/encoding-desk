@@ -6,6 +6,7 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var STORE_KEY = 'itpms-encoder:entries:v1';
+  var AI_KEY = 'itpms-encoder:ai:v1';
 
   var FIELDS = [
     { key: 'type', label: 'TYPE' },
@@ -221,7 +222,7 @@
 
   function setValue(key, val, isDraft) {
     value[key] = val;
-    drafted[key] = !!isDraft && !!val;
+    drafted[key] = (isDraft && val) ? (isDraft === true ? 'read' : isDraft) : false;
     if (key === 'type') {
       var radio = document.querySelector('input[name="type"][value="' + val + '"]');
       if (radio) radio.checked = true;
@@ -258,6 +259,8 @@
       cell.classList.toggle('is-filled', filled);
       cell.classList.toggle('is-empty', !filled);
       cell.classList.toggle('is-drafted', !!drafted[f.key] && filled);
+      var badge = cell.querySelector('.draft');
+      if (badge) badge.textContent = drafted[f.key] === 'ai' ? 'AI draft' : 'drafted';
     });
 
     var HINTS = {
@@ -375,6 +378,279 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
+  /* ---------- AI reader ---------- */
+
+  function loadAI() {
+    try {
+      var raw = localStorage.getItem(AI_KEY);
+      var cfg = raw ? JSON.parse(raw) : {};
+      return {
+        provider: cfg.provider || AI_PROVIDERS[0].id,
+        model: cfg.model || AI_PROVIDERS[0].defaultModel,
+        key: cfg.key || ''
+      };
+    } catch (e) {
+      return { provider: AI_PROVIDERS[0].id, model: AI_PROVIDERS[0].defaultModel, key: '' };
+    }
+  }
+
+  function saveAI(cfg) {
+    try { localStorage.setItem(AI_KEY, JSON.stringify(cfg)); return true; }
+    catch (e) { return false; }
+  }
+
+  function providerById(id) {
+    return AI_PROVIDERS.filter(function (p) { return p.id === id; })[0] || AI_PROVIDERS[0];
+  }
+
+  var MODULE_IDS = MODULES.map(function (m) { return m.id; });
+  var DEPT_IDS = DEPARTMENTS.map(function (d) { return d.id; });
+  var TYPE_IDS = TYPES.map(function (t) { return t.id; });
+
+  /* The page already carries the standard verbatim — the model reads the same
+     rules the encoder does, plus a contract for how to hand the answer back. */
+  function systemPrompt() {
+    return $('promptSource').textContent +
+      '\n\n# Output contract\n' +
+      '- Reply with JSON only, matching the requested schema. No prose, no code fences.\n' +
+      '- MODULE ID must be one of: ' + MODULE_IDS.join(', ') + '.\n' +
+      '- DEPARTMENT ID must be one of: ' + DEPT_IDS.join(', ') + '.\n' +
+      '- TYPE must be one of: ' + TYPE_IDS.join(', ') + '.\n' +
+      '- If the module or department cannot be determined from the message, return "UNKNOWN"\n' +
+      '  for that field. Do not guess a code that the message does not support.\n' +
+      '- Write Description, Challenge and Resolution as formal English sentences, even when\n' +
+      '  the message is in Filipino, Taglish, or shorthand.\n' +
+      '- Keep employee numbers, surnames and dates exactly as they appear in the message.\n' +
+      '- Never put a semicolon inside a field value; it separates fields.\n' +
+      '- Description states what is being asked for. Challenge states what blocks closing it,\n' +
+      '  not a restatement of the request. Resolution states what was done or where it goes next.\n' +
+      '- Use "notes" for anything you could not determine and would need to ask the requester.';
+  }
+
+  var AI_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+      type: { type: 'STRING', enum: TYPE_IDS },
+      module: { type: 'STRING', enum: MODULE_IDS.concat(['UNKNOWN']) },
+      description: { type: 'STRING' },
+      dept: { type: 'STRING', enum: DEPT_IDS.concat(['UNKNOWN']) },
+      challenge: { type: 'STRING' },
+      resolution: { type: 'STRING' },
+      notes: { type: 'STRING' }
+    },
+    required: ['type', 'module', 'description', 'dept', 'challenge', 'resolution'],
+    propertyOrdering: ['type', 'module', 'description', 'dept', 'challenge', 'resolution', 'notes']
+  };
+
+  function fetchJSON(url, options, timeoutMs) {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, timeoutMs || 45000);
+    options.signal = controller.signal;
+    return fetch(url, options).then(function (res) {
+      return res.text().then(function (body) {
+        clearTimeout(timer);
+        var parsed = null;
+        try { parsed = JSON.parse(body); } catch (e) { /* keep raw */ }
+        if (!res.ok) {
+          var msg = parsed && parsed.error && (parsed.error.message || parsed.error.code);
+          throw new Error(msg || ('HTTP ' + res.status));
+        }
+        if (!parsed) throw new Error('The provider returned a response that was not JSON.');
+        return parsed;
+      });
+    }, function (err) {
+      clearTimeout(timer);
+      throw new Error(err.name === 'AbortError'
+        ? 'The provider did not answer in time. Try again, or read without AI.'
+        : 'Could not reach the provider. Check the network and the key.');
+    });
+  }
+
+  function callGemini(cfg, message) {
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+      encodeURIComponent(cfg.model) + ':generateContent?key=' + encodeURIComponent(cfg.key);
+    return fetchJSON(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt() }] },
+        contents: [{ role: 'user', parts: [{ text: message }] }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: 'application/json',
+          responseSchema: AI_SCHEMA
+        }
+      })
+    }).then(function (data) {
+      var cand = data.candidates && data.candidates[0];
+      var part = cand && cand.content && cand.content.parts && cand.content.parts[0];
+      if (!part || !part.text) {
+        var blocked = data.promptFeedback && data.promptFeedback.blockReason;
+        throw new Error(blocked ? 'The provider blocked this message (' + blocked + ').'
+                                : 'The provider returned an empty answer.');
+      }
+      return part.text;
+    });
+  }
+
+  function callOpenRouter(cfg, message) {
+    return fetchJSON('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + cfg.key
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: systemPrompt() },
+          { role: 'user', content: message }
+        ]
+      })
+    }).then(function (data) {
+      var choice = data.choices && data.choices[0];
+      var text = choice && choice.message && choice.message.content;
+      if (!text) throw new Error('The provider returned an empty answer.');
+      return text;
+    });
+  }
+
+  function callProvider(cfg, message) {
+    return cfg.provider === 'openrouter' ? callOpenRouter(cfg, message) : callGemini(cfg, message);
+  }
+
+  /* Models sometimes wrap JSON in fences despite the contract. */
+  function parseAIReply(text) {
+    var t = String(text).trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+    var obj;
+    try { obj = JSON.parse(t); }
+    catch (e) {
+      var first = t.indexOf('{'), last = t.lastIndexOf('}');
+      if (first === -1 || last <= first) throw new Error('The answer was not valid JSON.');
+      obj = JSON.parse(t.slice(first, last + 1));
+    }
+    return obj;
+  }
+
+  function pickCode(val, allowed) {
+    var v = String(val || '').trim().toUpperCase();
+    return allowed.indexOf(v) !== -1 ? v : '';
+  }
+
+  function applyAI(obj) {
+    var rejected = [];
+    var type = pickCode(obj.type, TYPE_IDS) || 'SUPPORT';
+    var mod = pickCode(obj.module, MODULE_IDS);
+    var dep = pickCode(obj.dept, DEPT_IDS);
+
+    if (obj.module && !mod && String(obj.module).toUpperCase() !== 'UNKNOWN') {
+      rejected.push('module "' + obj.module + '"');
+    }
+    if (obj.dept && !dep && String(obj.dept).toUpperCase() !== 'UNKNOWN') {
+      rejected.push('department "' + obj.dept + '"');
+    }
+
+    setValue('type', type, 'ai');
+    setValue('module', mod, mod ? 'ai' : false);
+    setValue('dept', dep, dep ? 'ai' : false);
+    setValue('description', tidy(sanitize(obj.description || '')), !!obj.description && 'ai');
+    setValue('challenge', tidy(sanitize(obj.challenge || '')), !!obj.challenge && 'ai');
+    setValue('resolution', tidy(sanitize(obj.resolution || '')), !!obj.resolution && 'ai');
+
+    var notes = [];
+    if (!mod) notes.push('No module could be determined. Choose one below.');
+    if (!dep) notes.push('No department could be determined. Choose one below.');
+    if (rejected.length) {
+      notes.push('Returned ' + rejected.join(' and ') + ', which is not in the standard. Left empty.');
+    }
+    if (obj.notes) notes.push(String(obj.notes));
+
+    $('cues').innerHTML = '<ul class="cue-list"><li><b>Read by AI</b><br>' +
+      (notes.length ? notes.map(esc).join('<br>') : 'All six fields filled. Check them before you copy.') +
+      '</li></ul>';
+
+    var details = findDetails($('raw').value);
+    $('detailsBox').hidden = details.length === 0;
+    $('details').innerHTML = details.map(function (d) {
+      return '<button type="button" class="chip" data-detail="' + esc(d) + '">' + esc(d) + '</button>';
+    }).join('');
+
+    stampCells();
+    render();
+  }
+
+  function setAIBusy(busy, label) {
+    var btn = $('aiReadBtn');
+    btn.disabled = busy;
+    btn.textContent = busy ? (label || 'Reading…') : 'Read with AI';
+  }
+
+  function readWithAI() {
+    var raw = $('raw').value.trim();
+    if (!raw) {
+      setStatus('Paste a client message first.', 'warn');
+      return;
+    }
+    var cfg = loadAI();
+    if (!cfg.key) {
+      openAISettings(true);
+      setStatus('Add a provider key to read with AI, or choose Read without AI.', 'warn');
+      $('aiKey').focus();
+      return;
+    }
+    setAIBusy(true);
+    setStatus('Sending the message to ' + providerById(cfg.provider).name + '…');
+    callProvider(cfg, raw)
+      .then(function (text) {
+        applyAI(parseAIReply(text));
+        setStatus('Read by AI. Check each field before you copy.', 'ok');
+      })
+      .catch(function (err) {
+        /* Fall back first, then report — readMessage sets its own status and
+           would otherwise hide why the AI call failed. */
+        readMessage();
+        setStatus(err.message + ' Read without AI instead.', 'warn');
+      })
+      .then(function () { setAIBusy(false); });
+  }
+
+  function openAISettings(open) {
+    $('aiSettings').hidden = !open;
+    $('aiToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+    $('aiToggle').textContent = open ? 'Hide' : (loadAI().key ? 'Settings' : 'Set up');
+  }
+
+  function keyHintHTML(prov) {
+    return 'Starts with <code>' + esc(prov.prefix) + '</code>. ' + esc(prov.note) +
+      ' Get one at <a href="' + esc(prov.keyUrl) + '" target="_blank" rel="noopener noreferrer">' +
+      esc(prov.keyUrl.replace('https://', '')) + '</a>';
+  }
+
+  function renderAIState() {
+    var cfg = loadAI();
+    var prov = providerById(cfg.provider);
+    $('aiState').textContent = cfg.key
+      ? 'Ready — ' + prov.name + ', ' + cfg.model
+      : 'No key saved. Read with AI will ask for one.';
+    $('aiState').classList.toggle('is-ready', !!cfg.key);
+    $('aiKeyHint').innerHTML = keyHintHTML(prov);
+    if (!$('aiSettings').hidden) return;
+    $('aiToggle').textContent = cfg.key ? 'Settings' : 'Set up';
+  }
+
+  function buildAIPanel() {
+    $('aiProvider').innerHTML = AI_PROVIDERS.map(function (p) {
+      return '<option value="' + p.id + '">' + esc(p.name) + '</option>';
+    }).join('');
+    var cfg = loadAI();
+    $('aiProvider').value = cfg.provider;
+    $('aiModel').value = cfg.model;
+    $('aiKey').value = cfg.key;
+    renderAIState();
+  }
+
   /* ---------- build the page ---------- */
 
   function buildTypeSet() {
@@ -447,9 +723,61 @@
 
   function bind() {
     $('readBtn').addEventListener('click', readMessage);
+    $('aiReadBtn').addEventListener('click', readWithAI);
+
+    $('aiToggle').addEventListener('click', function () {
+      openAISettings($('aiSettings').hidden);
+    });
+
+    $('aiProvider').addEventListener('change', function (e) {
+      var prov = providerById(e.target.value);
+      $('aiModel').value = prov.defaultModel;
+      $('aiKeyHint').innerHTML = keyHintHTML(prov);
+      $('aiSaveStatus').textContent = 'Save the key to use ' + prov.name + '.';
+    });
+
+    $('aiSaveBtn').addEventListener('click', function () {
+      var cfg = {
+        provider: $('aiProvider').value,
+        model: $('aiModel').value.trim() || providerById($('aiProvider').value).defaultModel,
+        key: $('aiKey').value.trim()
+      };
+      $('aiModel').value = cfg.model;
+      if (!cfg.key) { $('aiSaveStatus').textContent = 'Paste a key first.'; return; }
+      $('aiSaveStatus').textContent = saveAI(cfg)
+        ? 'Saved in this browser.'
+        : 'This browser is not storing settings, so the key lasts for this page only.';
+      renderAIState();
+    });
+
+    $('aiForgetBtn').addEventListener('click', function () {
+      try { localStorage.removeItem(AI_KEY); } catch (e) { /* nothing to remove */ }
+      $('aiKey').value = '';
+      $('aiSaveStatus').textContent = 'Key removed from this browser.';
+      renderAIState();
+    });
+
+    $('aiTestBtn').addEventListener('click', function () {
+      var cfg = {
+        provider: $('aiProvider').value,
+        model: $('aiModel').value.trim() || providerById($('aiProvider').value).defaultModel,
+        key: $('aiKey').value.trim()
+      };
+      if (!cfg.key) { $('aiSaveStatus').textContent = 'Paste a key first.'; return; }
+      $('aiSaveStatus').textContent = 'Testing…';
+      callProvider(cfg, 'Hi sir, pacheck po ng canteen sync. Salamat.')
+        .then(function (text) {
+          parseAIReply(text);
+          $('aiSaveStatus').textContent = 'Works — ' + cfg.model + ' answered in the right shape.';
+        })
+        .catch(function (err) { $('aiSaveStatus').textContent = err.message; });
+    });
 
     $('raw').addEventListener('keydown', function (e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); readMessage(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        loadAI().key ? readWithAI() : readMessage();
+      }
     });
 
     $('sampleBtn').addEventListener('click', function () {
@@ -630,6 +958,7 @@
   buildTypeSet();
   buildSelects();
   buildQuickPicks();
+  buildAIPanel();
   buildReference();
   loadEntries();
   bind();

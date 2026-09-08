@@ -158,7 +158,7 @@ a { color: var(--carbon); text-decoration-thickness: 1px; text-underline-offset:
 
 .paste-wrap { position: relative; }
 
-textarea, input[type='text'], select {
+textarea, input[type='text'], input[type='password'], select {
   width: 100%; font-family: var(--body); font-size: 15px; color: var(--ink);
   background: var(--paper); border: 1px solid var(--rule); border-radius: var(--r);
   padding: 12px 13px;
@@ -207,6 +207,51 @@ textarea:focus, input:focus, select:focus { border-color: var(--carbon); }
 }
 .chip:hover { border-color: var(--carbon); color: var(--carbon); background: var(--carbon-wash); }
 .chip--text { font-family: var(--body); border-radius: var(--r); }
+
+/* ---------- AI reader ---------- */
+
+.ai-panel {
+  margin-top: 16px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--carbon);
+  border-radius: var(--r);
+  background: var(--paper-2);
+  padding: 13px 15px;
+}
+
+.ai-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.ai-head h3 {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; font-weight: 500; color: var(--ink-2);
+}
+.ai-state { margin: 0; margin-right: auto; font-size: 13px; color: var(--ink-3); }
+.ai-state.is-ready { color: var(--carbon-ink); }
+
+.ai-settings { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--rule); }
+.ai-settings[hidden] { display: none; }
+
+.ai-grid { display: grid; gap: 12px; margin-bottom: 12px; }
+@media (min-width: 620px) { .ai-grid { grid-template-columns: 1fr 1fr; } }
+
+.ai-label {
+  display: block; margin-bottom: 5px;
+  font-family: var(--mono); font-size: 11px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--ink-2);
+}
+.ai-settings input { font-family: var(--mono); font-size: 13px; }
+/* Key prefixes are literal strings — a grotesque renders AIza as Alza. */
+.ai-hint code { font-family: var(--mono); font-size: 12px; background: var(--paper-3);
+  padding: 1px 4px; border-radius: 2px; }
+
+.ai-hint { margin: 7px 0 0; font-size: 12.5px; color: var(--ink-3); word-break: break-word; }
+
+.ai-warn {
+  margin: 14px 0 0; padding: 10px 12px;
+  border: 1px solid var(--marker); background: var(--marker-wash);
+  border-radius: var(--r); font-size: 12.5px; line-height: 1.5; color: var(--ink);
+}
+
+#aiReadBtn[disabled] { opacity: .65; cursor: progress; }
 
 /* ---------- The record rail (signature) ---------- */
 

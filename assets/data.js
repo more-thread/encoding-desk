@@ -208,3 +208,24 @@ const QUICK_RESOLUTIONS = [
   { label: 'For validation', value: 'For further validation with the requesting department' },
   { label: 'Next release', value: 'Scheduled for the next system release' }
 ];
+
+/* Free-tier AI providers. Keys live in the browser only — see the AI panel.
+   Model names move fast; both fields are editable in the UI. */
+const AI_PROVIDERS = [
+  {
+    id: 'gemini',
+    name: 'Google AI Studio (Gemini)',
+    defaultModel: 'gemini-2.5-flash',
+    keyUrl: 'https://aistudio.google.com/apikey',
+    prefix: 'AIza',
+    note: 'Free tier, no card required.'
+  },
+  {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    defaultModel: 'google/gemini-2.0-flash-exp:free',
+    keyUrl: 'https://openrouter.ai/keys',
+    prefix: 'sk-or-',
+    note: 'Models ending in :free cost nothing.'
+  }
+];

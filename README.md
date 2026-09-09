@@ -1,7 +1,7 @@
-# ITPMS Log Encoder
+# Encoding Desk
 
 Paste a screenshot of a chat, or the conversation as text, and get the six-field
-ITPMS log entry for weekly monitoring:
+log entry for weekly monitoring:
 
 ```
 [TYPE]; [MODULE ID]; [Description]; [DEPARTMENT ID]; [Challenge]; [Resolution]; NONE
@@ -9,7 +9,7 @@ ITPMS log entry for weekly monitoring:
 
 One page, one job. No build step and no server — a static site on GitHub Pages.
 
-**Live: https://more-thread.github.io/itpms-log-encoder/**
+**Live: https://more-thread.github.io/encoding-desk/**
 
 ## Using it
 
@@ -65,6 +65,9 @@ in particular may use submitted content to improve models.
   seventh field.
 - Newlines and repeated whitespace collapse to single spaces.
 - The trailing `; NONE` is always appended.
+- When nothing in the message states an outcome, Resolution defaults to
+  `For weekly monitoring`. Change it in `assets/app.js` (`readOffline`) and in
+  the worked example inside `#promptSource` if your sheet expects other wording.
 - Module and department are constrained to a JSON schema whose enums are your
   actual codes. Anything outside the lists is rejected and the field is left
   empty with a note, so a plausible-sounding `CANTEEN` never lands in place of

@@ -1,11 +1,12 @@
-/* ITPMS Log Encoder — paste a screenshot or a conversation, get the record.
+/* Encoding Desk — paste a screenshot or a conversation, get the record.
    The AI reader handles both; plain text falls back to an on-device reader. */
 
 (function () {
   'use strict';
 
   var $ = function (id) { return document.getElementById(id); };
-  var AI_KEY = 'itpms-encoder:ai:v1';
+  var AI_KEY = 'encoding-desk:ai:v1';
+  var LEGACY_AI_KEY = 'itpms-encoder:ai:v1';
 
   var FIELDS = [
     { key: 'type', label: 'TYPE' },
@@ -136,7 +137,7 @@
       description: desc,
       dept: d ? d.id : '',
       challenge: tidy(sanitize(draftChallenge(text, desc))),
-      resolution: 'For ITPMS Request'
+      resolution: 'For weekly monitoring'
     };
   }
 
@@ -144,7 +145,17 @@
 
   function loadAI() {
     try {
-      var cfg = JSON.parse(localStorage.getItem(AI_KEY) || '{}');
+      var raw = localStorage.getItem(AI_KEY);
+      /* Carry over a key saved under the old name so it is not silently lost. */
+      if (!raw) {
+        var legacy = localStorage.getItem(LEGACY_AI_KEY);
+        if (legacy) {
+          localStorage.setItem(AI_KEY, legacy);
+          localStorage.removeItem(LEGACY_AI_KEY);
+          raw = legacy;
+        }
+      }
+      var cfg = JSON.parse(raw || '{}');
       return {
         provider: cfg.provider || AI_PROVIDERS[0].id,
         model: cfg.model || AI_PROVIDERS[0].defaultModel,

@@ -1,4 +1,4 @@
-/* Reference data for the ITPMS encoding standard.
+/* Reference data for the encoding standard.
    Cue weights: 8 = the code itself, 4-6 = a phrase only this module uses,
    1-2 = a supporting word that could belong to more than one module. */
 

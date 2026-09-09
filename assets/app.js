@@ -23,29 +23,6 @@
 
   /* ---------- text helpers ---------- */
 
-  function normalize(s) {
-    return ' ' + String(s).toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
-  }
-
-  function hasCue(norm, cue) {
-    var c = normalize(cue).trim();
-    if (!c) return false;
-    if (norm.indexOf(' ' + c + ' ') !== -1) return true;
-    return c.length >= 5 && norm.indexOf(c) !== -1;
-  }
-
-  function best(norm, list) {
-    var top = null;
-    for (var i = 0; i < list.length; i++) {
-      var total = 0;
-      for (var j = 0; j < list[i].cues.length; j++) {
-        if (hasCue(norm, list[i].cues[j][0])) total += list[i].cues[j][1];
-      }
-      if (total > 0 && (!top || total > top.score)) top = { id: list[i].id, score: total };
-    }
-    return top;
-  }
-
   /* A semicolon inside a field would silently add a seventh field. */
   function sanitize(v) {
     return String(v).replace(/[\r\n]+/g, ' ').replace(/;/g, ',').replace(/\s+/g, ' ').trim();
@@ -62,83 +39,6 @@
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-
-  /* ---------- on-device reader (text only) ---------- */
-
-  var GREETING = /^(sir|ma'?am|maam)?[\s,]*\b(hi+|hello+|hey|good\s+(morning|afternoon|evening|day))\b[\s,.!]*(sir|ma'?am|maam|po)?[\s,.!:]*/i;
-
-  var REQUEST_VERBS = [
-    [/\bpa-?cancel\b/gi, 'cancel'], [/\bpa-?check\b/gi, 'check'],
-    [/\bpa-?update\b/gi, 'update'], [/\bpa-?delete\b/gi, 'delete'],
-    [/\bpa-?add\b/gi, 'add'], [/\bpa-?reset\b/gi, 'reset'],
-    [/\bpa-?approve\b/gi, 'approve'], [/\bpa-?revise\b/gi, 'revise'],
-    [/\bpa-?open\b/gi, 'open'], [/\bpa-?activate\b/gi, 'activate'],
-    [/\bpa-?encode\b/gi, 'encode'], [/\bpa-?upload\b/gi, 'upload'],
-    [/\bpa-?extend\b/gi, 'extend'], [/\bpa-?help\b/gi, 'assist with']
-  ];
-
-  var FILLERS = /\b(po|opo|yong|yung|nito|niyan|naman|sana|lang|kaya|pala|pede|pwede|puwede|ba|daw)\b/gi;
-
-  var PROBLEM = ['error', 'bug', 'not working', 'hindi', 'cannot', "can't", 'issue', 'problem',
-    'failed', 'stuck', 'wrong', 'incorrect', 'missing', 'bakit', 'delayed', 'pending',
-    'duplicate', 'unclear', 'double', 'mali', 'walang', 'wala', 'nagpapakita', 'still'];
-
-  function splitSentences(text) {
-    var NL = String.fromCharCode(10);
-    return text.replace(/([.!?])\s+/g, '$1' + NL).split(NL)
-      .map(function (s) { return s.trim(); }).filter(Boolean);
-  }
-
-  function stripPoliteness(s) {
-    var out = String(s).replace(GREETING, '');
-    REQUEST_VERBS.forEach(function (pair) { out = out.replace(pair[0], pair[1]); });
-    return out
-      .replace(FILLERS, ' ')
-      .replace(/\b(sir|ma'?am|maam)\b/gi, ' ')
-      .replace(/\b(thank you|thanks|salamat)\b[\s.!]*/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function draftDescription(text) {
-    var lines = text.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
-    var kept = lines.filter(function (l) {
-      return !(GREETING.test(l) && l.replace(GREETING, '').trim().length < 3);
-    });
-    var out = splitSentences(stripPoliteness(kept.join(' '))).slice(0, 2).join(' ');
-    if (out.length > 220) out = out.slice(0, 217).replace(/\s+\S*$/, '') + '…';
-    return tidy(out);
-  }
-
-  function draftChallenge(text, description) {
-    var sentences = splitSentences(stripPoliteness(text));
-    var desc = normalize(description || '').trim();
-    for (var i = 0; i < sentences.length; i++) {
-      var norm = normalize(sentences[i]);
-      if (desc && desc.indexOf(norm.trim()) !== -1) continue;
-      for (var j = 0; j < PROBLEM.length; j++) {
-        if (hasCue(norm, PROBLEM[j])) {
-          var s = tidy(sentences[i]);
-          return s.length > 180 ? s.slice(0, 177).replace(/\s+\S*$/, '') + '…' : s;
-        }
-      }
-    }
-    return '';
-  }
-
-  function readOffline(text) {
-    var norm = normalize(text);
-    var t = best(norm, TYPES), m = best(norm, MODULES), d = best(norm, DEPARTMENTS);
-    var desc = tidy(sanitize(draftDescription(text)));
-    return {
-      type: t ? t.id : 'SUPPORT',
-      module: m ? m.id : '',
-      description: desc,
-      dept: d ? d.id : '',
-      challenge: tidy(sanitize(draftChallenge(text, desc))),
-      resolution: 'For weekly monitoring'
-    };
   }
 
   /* ---------- AI reader ---------- */
@@ -175,9 +75,23 @@
     return AI_PROVIDERS.filter(function (p) { return p.id === id; })[0] || AI_PROVIDERS[0];
   }
 
-  var MODULE_IDS = MODULES.map(function (m) { return m.id; });
-  var DEPT_IDS = DEPARTMENTS.map(function (d) { return d.id; });
-  var TYPE_IDS = TYPES.map(function (t) { return t.id; });
+  /* The standard is the only place codes are defined. Reading them back out
+     means adding a module there is enough — nothing else to keep in step. */
+  function codesUnder(heading) {
+    var std = $('promptSource').textContent;
+    var at = std.indexOf(heading);
+    if (at === -1) return [];
+    var block = std.slice(at + heading.length);
+    var end = block.indexOf('\n# ');
+    if (end !== -1) block = block.slice(0, end);
+    var out = [], re = /^-\s*([A-Z0-9]+)\s*:/gm, m;
+    while ((m = re.exec(block)) !== null) out.push(m[1]);
+    return out;
+  }
+
+  var MODULE_IDS = codesUnder('# Supported MODULE IDs');
+  var DEPT_IDS = codesUnder('# Supported DEPARTMENT IDs');
+  var TYPE_IDS = TYPES;
 
   function systemPrompt() {
     return $('promptSource').textContent +
@@ -430,7 +344,7 @@
     return FIELDS.filter(function (f) { return !sanitize(rec[f.key]); });
   }
 
-  function showResult(rec, source, notes) {
+  function showResult(rec, notes) {
     record = rec;
     var missing = missingIn(rec);
     var parts = FIELDS.map(function (f) { return sanitize(rec[f.key]); }).concat(['NONE']);
@@ -439,8 +353,9 @@
       return p ? esc(p) : '<span class="gap">' + FIELDS[i].label + ' ?</span>';
     }).join('<span class="sep">; </span>');
 
-    $('resultMeta').textContent = (missing.length ? (6 - missing.length) + ' of 6 fields' : 'All six fields') +
-      ' · ' + source;
+    $('resultMeta').textContent = missing.length
+      ? (6 - missing.length) + ' of 6 fields'
+      : 'All six fields';
 
     $('breakdownBody').innerHTML = FIELDS.map(function (f, i) {
       var v = sanitize(rec[f.key]);
@@ -491,15 +406,9 @@
       return;
     }
     var cfg = loadAI();
-
     if (!cfg.key) {
-      if (shots.length) {
-        openAISettings(true);
-        setTopStatus('Screenshots need the AI reader. Add a free key below, or paste the text instead.', 'warn');
-        return;
-      }
-      showResult(readOffline(text), 'read on device', 
-        ['Encoded without AI. Add a key below for full sentences and screenshot reading.']);
+      openAISettings(true);
+      setTopStatus('Add a free API key to encode — it takes a minute. See below.', 'warn');
       return;
     }
 
@@ -508,16 +417,10 @@
     callProvider(cfg, text)
       .then(function (reply) {
         var out = toRecord(parseAIReply(reply));
-        showResult(out.rec, 'read by AI', out.notes);
+        showResult(out.rec, out.notes);
         setStatus('Check the line before you file it.', 'ok');
       })
-      .catch(function (err) {
-        if (text) {
-          showResult(readOffline(text), 'read on device', [err.message + ' Encoded without AI instead.']);
-        } else {
-          setTopStatus(err.message, 'warn');
-        }
-      })
+      .catch(function (err) { setTopStatus(err.message, 'warn'); })
       .then(function () { setBusy(false); });
   }
 
@@ -560,7 +463,7 @@
     var prov = providerById(cfg.provider);
     $('aiState').textContent = cfg.key
       ? 'Ready — ' + prov.name + ', ' + cfg.model
-      : 'No key saved. Screenshots need one; text is read on device.';
+      : 'No key saved. Add one to start encoding.';
     $('aiState').classList.toggle('is-ready', !!cfg.key);
     $('aiKeyHint').innerHTML = keyHintHTML(prov);
     if ($('aiSettings').hidden) $('aiToggle').textContent = cfg.key ? 'Settings' : 'Set up';
@@ -714,4 +617,12 @@
 
   buildAIPanel();
   bind();
+
+  /* An empty enum would force every answer to UNKNOWN while still looking
+     like it worked, so say so instead. */
+  if (!MODULE_IDS.length || !DEPT_IDS.length) {
+    $('encodeBtn').disabled = true;
+    setTopStatus('The code lists could not be read from the standard in index.html. ' +
+      'Check the "# Supported MODULE IDs" and "# Supported DEPARTMENT IDs" sections.', 'warn');
+  }
 })();

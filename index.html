@@ -84,6 +84,13 @@
         </div>
       </div>
 
+      <div id="aiUrlRow" hidden>
+        <label class="ai-label" for="aiUrl">Endpoint URL</label>
+        <input type="text" id="aiUrl" spellcheck="false" autocomplete="off"
+               placeholder="https://api.example.com/v1/chat/completions">
+        <p class="ai-hint">Any OpenAI-compatible <code>/chat/completions</code> endpoint.</p>
+      </div>
+
       <label class="ai-label" for="aiKey">API key</label>
       <input type="password" id="aiKey" spellcheck="false" autocomplete="off" placeholder="Paste your key">
       <p class="ai-hint" id="aiKeyHint"></p>
@@ -91,9 +98,11 @@
       <div class="drop-bar" style="margin-top:12px">
         <button class="btn btn--small btn--primary" id="aiSaveBtn" type="button">Save key</button>
         <button class="btn btn--small btn--quiet" id="aiTestBtn" type="button">Test connection</button>
+        <button class="btn btn--small btn--quiet" id="aiListBtn" type="button">List models</button>
         <button class="btn btn--small btn--quiet" id="aiForgetBtn" type="button">Forget key</button>
       </div>
       <p class="ai-hint" id="aiSaveStatus" role="status" aria-live="polite"></p>
+      <div class="model-list" id="aiModels" hidden></div>
 
       <p class="ai-warn">
         The key is stored in this browser only and is never committed to the repository.

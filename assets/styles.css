@@ -321,3 +321,16 @@ textarea::placeholder, input::placeholder { color: var(--ink-3); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.model-list {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 10px; max-height: 170px; overflow: auto;
+  padding: 10px; border: 1px solid var(--rule); border-radius: var(--r); background: var(--paper);
+}
+.model-list[hidden] { display: none; }
+.chip {
+  font-family: var(--mono); font-size: 11.5px; cursor: pointer;
+  border: 1px solid var(--rule); background: var(--paper); color: var(--ink-2);
+  padding: 3px 8px; border-radius: 999px;
+}
+.chip:hover { border-color: var(--carbon); color: var(--carbon); background: var(--carbon-wash); }

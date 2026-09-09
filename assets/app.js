@@ -56,15 +56,20 @@
         }
       }
       var cfg = JSON.parse(raw || '{}');
-      var model = cfg.model || AI_PROVIDERS[0].defaultModel;
+      var prov = providerById(cfg.provider);
+      var model = cfg.model || prov.defaultModel;
       if (RETIRED_MODELS[model]) model = RETIRED_MODELS[model];
       return {
-        provider: cfg.provider || AI_PROVIDERS[0].id,
+        provider: prov.id,
         model: model,
+        url: cfg.url || prov.url,
         key: cfg.key || ''
       };
     } catch (e) {
-      return { provider: AI_PROVIDERS[0].id, model: AI_PROVIDERS[0].defaultModel, key: '' };
+      return {
+        provider: AI_PROVIDERS[0].id, model: AI_PROVIDERS[0].defaultModel,
+        url: AI_PROVIDERS[0].url, key: ''
+      };
     }
   }
 
@@ -165,8 +170,9 @@
       return { inline_data: { mime_type: s.mime, data: s.base64 } };
     });
     parts.push({ text: text || askText() });
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-      encodeURIComponent(cfg.model) + ':generateContent?key=' + encodeURIComponent(cfg.key);
+    var base = (cfg.url || providerById('gemini').url).replace(/\/+$/, '');
+    var url = base + '/models/' + encodeURIComponent(cfg.model) +
+      ':generateContent?key=' + encodeURIComponent(cfg.key);
     return fetchJSON(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -192,12 +198,12 @@
     });
   }
 
-  function callOpenRouter(cfg, text) {
+  function callOpenAI(cfg, text) {
     var content = shots.map(function (s) {
       return { type: 'image_url', image_url: { url: 'data:' + s.mime + ';base64,' + s.base64 } };
     });
     content.push({ type: 'text', text: text || askText() });
-    return fetchJSON('https://openrouter.ai/api/v1/chat/completions', {
+    return fetchJSON(cfg.url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + cfg.key },
       body: JSON.stringify({
@@ -218,7 +224,34 @@
   }
 
   function callProvider(cfg, text) {
-    return cfg.provider === 'openrouter' ? callOpenRouter(cfg, text) : callGemini(cfg, text);
+    var prov = providerById(cfg.provider);
+    if (prov.kind === 'openai' && !cfg.url) {
+      return Promise.reject(new Error('Set the endpoint URL for ' + prov.name + ' first.'));
+    }
+    if (!cfg.model) {
+      return Promise.reject(new Error('Choose a model first — use List models to see what the key allows.'));
+    }
+    return prov.kind === 'openai' ? callOpenAI(cfg, text) : callGemini(cfg, text);
+  }
+
+  /* Model IDs move often enough that guessing them is the main setup failure.
+     Every provider here exposes a list endpoint, so ask it. */
+  function listModels(cfg) {
+    var prov = providerById(cfg.provider);
+    if (prov.kind === 'gemini') {
+      var base = (cfg.url || prov.url).replace(/\/+$/, '');
+      return fetchJSON(base + '/models?key=' + encodeURIComponent(cfg.key), { method: 'GET' })
+        .then(function (d) {
+          return (d.models || []).filter(function (m) {
+            return (m.supportedGenerationMethods || []).indexOf('generateContent') !== -1;
+          }).map(function (m) { return String(m.name).replace(/^models\//, ''); });
+        });
+    }
+    var url = cfg.url.replace(/\/chat\/completions\/?$/, '/models');
+    return fetchJSON(url, { method: 'GET', headers: { 'Authorization': 'Bearer ' + cfg.key } })
+      .then(function (d) {
+        return (d.data || d.models || []).map(function (m) { return m.id || m.name; }).filter(Boolean);
+      });
   }
 
   /* Models sometimes fence the JSON despite the contract. */
@@ -448,9 +481,14 @@
   /* ---------- AI panel ---------- */
 
   function keyHintHTML(prov) {
-    return 'Starts with <code>' + esc(prov.prefix) + '</code>. ' + esc(prov.note) +
-      ' Get one at <a href="' + esc(prov.keyUrl) + '" target="_blank" rel="noopener noreferrer">' +
-      esc(prov.keyUrl.replace('https://', '')) + '</a>';
+    var bits = [];
+    if (prov.prefix) bits.push('Starts with <code>' + esc(prov.prefix) + '</code>.');
+    if (prov.note) bits.push(esc(prov.note));
+    if (prov.keyUrl) {
+      bits.push('Get one at <a href="' + esc(prov.keyUrl) + '" target="_blank" rel="noopener noreferrer">' +
+        esc(prov.keyUrl.replace('https://', '')) + '</a>');
+    }
+    return bits.join(' ');
   }
 
   function openAISettings(open) {
@@ -476,8 +514,13 @@
     return {
       provider: prov.id,
       model: $('aiModel').value.trim() || prov.defaultModel,
+      url: $('aiUrl').value.trim() || prov.url,
       key: $('aiKey').value.trim()
     };
+  }
+
+  function showUrlField(prov) {
+    $('aiUrlRow').hidden = prov.kind !== 'openai';
   }
 
   function buildAIPanel() {
@@ -487,7 +530,9 @@
     var cfg = loadAI();
     $('aiProvider').value = cfg.provider;
     $('aiModel').value = cfg.model;
+    $('aiUrl').value = cfg.url;
     $('aiKey').value = cfg.key;
+    showUrlField(providerById(cfg.provider));
     renderAIState();
   }
 
@@ -580,8 +625,12 @@
     $('aiProvider').addEventListener('change', function () {
       var prov = providerById($('aiProvider').value);
       $('aiModel').value = prov.defaultModel;
+      $('aiUrl').value = prov.url;
+      showUrlField(prov);
       $('aiKeyHint').innerHTML = keyHintHTML(prov);
-      $('aiSaveStatus').textContent = 'Save the key to use ' + prov.name + '.';
+      $('aiSaveStatus').textContent = prov.defaultModel
+        ? 'Save the key to use ' + prov.name + '.'
+        : 'Add your key, then choose List models to pick one.';
     });
 
     $('aiSaveBtn').addEventListener('click', function () {
@@ -599,6 +648,30 @@
       $('aiKey').value = '';
       $('aiSaveStatus').textContent = 'Key removed from this browser.';
       renderAIState();
+    });
+
+    $('aiListBtn').addEventListener('click', function () {
+      var cfg = readPanel();
+      if (!cfg.key) { $('aiSaveStatus').textContent = 'Paste a key first.'; return; }
+      $('aiSaveStatus').textContent = 'Asking the provider what it offers…';
+      listModels(cfg)
+        .then(function (ids) {
+          if (!ids.length) { $('aiSaveStatus').textContent = 'The provider listed no models.'; return; }
+          $('aiSaveStatus').textContent = ids.length + ' models available. Choose one:';
+          $('aiModels').hidden = false;
+          $('aiModels').innerHTML = ids.sort().map(function (id) {
+            return '<button type="button" class="chip" data-model="' + esc(id) + '">' + esc(id) + '</button>';
+          }).join('');
+        })
+        .catch(function (err) { $('aiSaveStatus').textContent = err.message; });
+    });
+
+    $('aiModels').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-model]');
+      if (!btn) return;
+      $('aiModel').value = btn.getAttribute('data-model');
+      $('aiModels').hidden = true;
+      $('aiSaveStatus').textContent = 'Model set. Choose Save key, then Test connection.';
     });
 
     $('aiTestBtn').addEventListener('click', function () {

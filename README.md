@@ -34,39 +34,38 @@ setup panel.
 
 ## Setting up the AI reader
 
-Open **AI reader → Set up** at the bottom of the page.
+Open **AI reader → Set up** at the bottom of the page, choose a provider, paste
+a key, then **List models** to pick one, and **Test connection** to confirm.
 
-| Provider | Free tier | Get a key | Default model |
-| --- | --- | --- | --- |
-| Google AI Studio | Yes, no card required | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-3.6-flash` |
-| OpenRouter | Models ending `:free` | [openrouter.ai/keys](https://openrouter.ai/keys) | `google/gemma-4-31b-it:free` |
+| Provider | Free tier | Get a key |
+| --- | --- | --- |
+| Google AI Studio | Yes, no card required | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| OpenRouter | Models ending `:free` | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| Groq | Yes | [console.groq.com/keys](https://console.groq.com/keys) |
+| Mistral | Experiment tier | [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys) |
+| Custom | — | any OpenAI-compatible endpoint |
 
-Paste the key, choose **Save key**, then **Test connection**. The model field is
-editable — model names change, and if one is retired or rate-limited you can
-point at another without touching code. For screenshots the model must support
-image input; both defaults do.
+**If a provider is blocked on your network.** Corporate networks often allow some
+of these and not others. Run `sh check-providers.sh` on the machine you encode
+from; anything marked `yes` will work. Then pick that provider — or **Custom**
+and paste its `/chat/completions` URL. All of them permit browser calls, so no
+proxy is needed.
 
-Model IDs do get retired, and a saved setting would then fail on every call with
-a message about the model rather than the key. `RETIRED_MODELS` in
-`assets/data.js` maps an old ID to its replacement so an existing setup keeps
-working; add a line there when a default moves. Google's current list is at
-[ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models),
-and OpenRouter's free models can be listed with:
-
-```sh
-curl -s https://openrouter.ai/api/v1/models \
-  | python3 -c "import sys,json;[print(m['id']) for m in json.load(sys.stdin)['data'] if m['id'].endswith(':free')]"
-```
+**Picking a model.** Model IDs change often, and a stale one fails with a message
+about the model rather than the key. **List models** asks the provider what your
+key actually allows and lets you choose from the answer. For screenshots the
+model must accept image input. `RETIRED_MODELS` in `assets/data.js` maps IDs that
+have been withdrawn to their replacement, so a saved setup keeps working.
 
 **Where the key lives.** In this browser's `localStorage`, on your machine only.
-Never committed, never sent anywhere except the provider you chose. Anyone who
+Never committed, never sent anywhere except the endpoint you chose. Anyone who
 can use this browser profile can read it, so do not set it up on a shared
 machine. **Forget key** removes it.
 
 **What gets sent.** Encoding sends the pasted text and any screenshots to the
 provider. For conversations carrying employee numbers, names or case details that
 is a real data-handling decision — check it against your own policy. Free tiers
-in particular may use submitted content to improve models.
+in particular commonly reserve the right to train on submitted content.
 
 ## Guarantees
 
@@ -116,4 +115,5 @@ index.html          markup, and the encoding standard as the system prompt
 assets/styles.css   continuous-form ledger styling
 assets/data.js      log types and AI providers
 assets/app.js       screenshot handling, the AI call, result rendering
+check-providers.sh  which providers this network can reach
 ```

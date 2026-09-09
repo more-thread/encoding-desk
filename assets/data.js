@@ -4,24 +4,45 @@
 
 const TYPES = ['SUPPORT', 'INITIATIVE', 'MEETING'];
 
-/* Free-tier AI providers. Keys live in the browser only — see the AI panel.
-   Model names move fast; both fields are editable in the UI. */
+/* Providers. `kind` picks the request shape: 'gemini' uses generateContent,
+   'openai' uses /chat/completions, which Groq, Mistral, Cerebras, Together and
+   OpenRouter all speak. All of them allow browser calls, so a blocked provider
+   can be swapped for a reachable one without touching code. */
 const AI_PROVIDERS = [
   {
-    id: 'gemini',
-    name: 'Google AI Studio (Gemini)',
+    id: 'gemini', kind: 'gemini', name: 'Google AI Studio (Gemini)',
+    url: 'https://generativelanguage.googleapis.com/v1beta',
     defaultModel: 'gemini-3.6-flash',
     keyUrl: 'https://aistudio.google.com/apikey',
-    prefix: 'AIza',
-    note: 'Free tier, no card required.'
+    prefix: 'AIza', note: 'Free tier, no card required.'
   },
   {
-    id: 'openrouter',
-    name: 'OpenRouter',
+    id: 'openrouter', kind: 'openai', name: 'OpenRouter',
+    url: 'https://openrouter.ai/api/v1/chat/completions',
     defaultModel: 'google/gemma-4-31b-it:free',
     keyUrl: 'https://openrouter.ai/keys',
-    prefix: 'sk-or-',
-    note: 'Models ending in :free cost nothing.'
+    prefix: 'sk-or-', note: 'Models ending :free cost nothing.'
+  },
+  {
+    id: 'groq', kind: 'openai', name: 'Groq',
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    defaultModel: '',
+    keyUrl: 'https://console.groq.com/keys',
+    prefix: 'gsk_', note: 'Free tier. Use List models to pick one that reads images.'
+  },
+  {
+    id: 'mistral', kind: 'openai', name: 'Mistral',
+    url: 'https://api.mistral.ai/v1/chat/completions',
+    defaultModel: '',
+    keyUrl: 'https://console.mistral.ai/api-keys',
+    prefix: '', note: 'Free Experiment tier. Use List models to pick one.'
+  },
+  {
+    id: 'custom', kind: 'openai', name: 'Custom (OpenAI-compatible)',
+    url: '',
+    defaultModel: '',
+    keyUrl: '',
+    prefix: '', note: 'Any endpoint that accepts POST /chat/completions.'
   }
 ];
 

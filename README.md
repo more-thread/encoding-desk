@@ -38,13 +38,25 @@ Open **AI reader → Set up** at the bottom of the page.
 
 | Provider | Free tier | Get a key | Default model |
 | --- | --- | --- | --- |
-| Google AI Studio | Yes, no card required | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-2.5-flash` |
-| OpenRouter | Models ending `:free` | [openrouter.ai/keys](https://openrouter.ai/keys) | `google/gemini-2.0-flash-exp:free` |
+| Google AI Studio | Yes, no card required | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | `gemini-3.6-flash` |
+| OpenRouter | Models ending `:free` | [openrouter.ai/keys](https://openrouter.ai/keys) | `google/gemma-4-31b-it:free` |
 
 Paste the key, choose **Save key**, then **Test connection**. The model field is
 editable — model names change, and if one is retired or rate-limited you can
 point at another without touching code. For screenshots the model must support
 image input; both defaults do.
+
+Model IDs do get retired, and a saved setting would then fail on every call with
+a message about the model rather than the key. `RETIRED_MODELS` in
+`assets/data.js` maps an old ID to its replacement so an existing setup keeps
+working; add a line there when a default moves. Google's current list is at
+[ai.google.dev/gemini-api/docs/models](https://ai.google.dev/gemini-api/docs/models),
+and OpenRouter's free models can be listed with:
+
+```sh
+curl -s https://openrouter.ai/api/v1/models \
+  | python3 -c "import sys,json;[print(m['id']) for m in json.load(sys.stdin)['data'] if m['id'].endswith(':free')]"
+```
 
 **Where the key lives.** In this browser's `localStorage`, on your machine only.
 Never committed, never sent anywhere except the provider you chose. Anyone who

@@ -10,7 +10,7 @@ const AI_PROVIDERS = [
   {
     id: 'gemini',
     name: 'Google AI Studio (Gemini)',
-    defaultModel: 'gemini-2.5-flash',
+    defaultModel: 'gemini-3.6-flash',
     keyUrl: 'https://aistudio.google.com/apikey',
     prefix: 'AIza',
     note: 'Free tier, no card required.'
@@ -18,9 +18,18 @@ const AI_PROVIDERS = [
   {
     id: 'openrouter',
     name: 'OpenRouter',
-    defaultModel: 'google/gemini-2.0-flash-exp:free',
+    defaultModel: 'google/gemma-4-31b-it:free',
     keyUrl: 'https://openrouter.ai/keys',
     prefix: 'sk-or-',
     note: 'Models ending in :free cost nothing.'
   }
 ];
+
+/* Model IDs get retired and a saved setting would then fail on every call with
+   a message about the model, not the key. Map the old ID to its replacement so
+   an existing setup keeps working. */
+const RETIRED_MODELS = {
+  'gemini-2.5-flash': 'gemini-3.6-flash',
+  'gemini-2.0-flash': 'gemini-3.6-flash',
+  'google/gemini-2.0-flash-exp:free': 'google/gemma-4-31b-it:free'
+};

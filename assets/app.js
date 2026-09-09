@@ -56,9 +56,11 @@
         }
       }
       var cfg = JSON.parse(raw || '{}');
+      var model = cfg.model || AI_PROVIDERS[0].defaultModel;
+      if (RETIRED_MODELS[model]) model = RETIRED_MODELS[model];
       return {
         provider: cfg.provider || AI_PROVIDERS[0].id,
-        model: cfg.model || AI_PROVIDERS[0].defaultModel,
+        model: model,
         key: cfg.key || ''
       };
     } catch (e) {
